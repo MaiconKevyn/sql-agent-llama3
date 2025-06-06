@@ -41,7 +41,7 @@ def criar_banco_de_dados_do_csv(csv_path, db_name, table_name_override=None):
 
 if __name__ == "__main__":
     # Configurações
-    csv_file = '/home/maiconkevyn/PycharmProjects/txt2sql/data/dados_sus_rs.csv'  # Ajuste o caminho se necessário
+    csv_file = '/data/dados_sus3.csv'  # Ajuste o caminho se necessário
     database_file = 'sus_data.db'
 
     # Você pode opcionalmente definir um nome de tabela específico aqui,
