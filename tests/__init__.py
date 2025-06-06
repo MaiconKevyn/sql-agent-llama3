@@ -1,0 +1,1 @@
+"""Módulo de testes do projeto txt2sql."""
