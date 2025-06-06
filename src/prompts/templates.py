@@ -55,39 +55,39 @@ class PromptManager:
             suggestions_text = f"\nSUGESTÕES DE COLUNAS PARA SUA PERGUNTA:\n" + "\n".join(f"- {s}" for s in column_suggestions)
 
         return f"""
-    Responda em português brasileiro: {query}
-
-    IMPORTANTE - DOCUMENTAÇÃO ESPECÍFICA:
+        Responda em português brasileiro: {query}
     
-    1. PARA MORTALIDADE:
-       - Use MORTE = 1 para contar óbitos
-       - NÃO use CID_MORTE > 0 (incorreto!)
-       - CID_MORTE contém a CAUSA da morte, não indica se morreu
-    
-    2. PARA CIDADES:
-       - Use CIDADE_RESIDENCIA_PACIENTE = 'Nome da Cidade'
-       - NÃO use MUNIC_RES = código (menos preciso)
-       - Exemplos: 'Porto Alegre', 'Santa Maria', 'Caxias do Sul'
-    
-    3. PARA SEXO:
-       - SEXO = 1 significa Masculino
-       - SEXO = 3 significa Feminino
-       - NÃO existe SEXO = 2
-    
-    4. PARA UTI:
-       - UTI_MES_TO = 0 significa que NÃO ficou em UTI
-       - UTI_MES_TO > 0 significa número de dias em UTI
-    
-    5. QUERIES CORRETAS PARA MORTALIDADE:
-       - Total de mortes: SELECT COUNT(*) FROM dados_sus3 WHERE MORTE = 1
-       - Mortes por cidade: SELECT COUNT(*) FROM dados_sus3 WHERE CIDADE_RESIDENCIA_PACIENTE = 'Nome' AND MORTE = 1
-       - Mortes por estado: SELECT COUNT(*) FROM dados_sus3 WHERE UF_RESIDENCIA_PACIENTE = 'UF' AND MORTE = 1
-    
-    {suggestions_text}
-    
-    SEMPRE valide se está usando as colunas corretas para o que foi perguntado!
-    Dê preferência para nomes de cidades ao invés de códigos IBGE!
-    """
+        IMPORTANTE - DOCUMENTAÇÃO ESPECÍFICA:
+        
+        1. PARA MORTALIDADE:
+           - Use MORTE = 1 para contar óbitos
+           - NÃO use CID_MORTE > 0 (incorreto!)
+           - CID_MORTE contém a CAUSA da morte, não indica se morreu
+        
+        2. PARA CIDADES:
+           - Use CIDADE_RESIDENCIA_PACIENTE = 'Nome da Cidade'
+           - NÃO use MUNIC_RES = código (menos preciso)
+           - Exemplos: 'Porto Alegre', 'Santa Maria', 'Caxias do Sul'
+        
+        3. PARA SEXO:
+           - SEXO = 1 significa Masculino
+           - SEXO = 3 significa Feminino
+           - NÃO existe SEXO = 2
+        
+        4. PARA UTI:
+           - UTI_MES_TO = 0 significa que NÃO ficou em UTI
+           - UTI_MES_TO > 0 significa número de dias em UTI
+        
+        5. QUERIES CORRETAS PARA MORTALIDADE:
+           - Total de mortes: SELECT COUNT(*) FROM dados_sus3 WHERE MORTE = 1
+           - Mortes por cidade: SELECT COUNT(*) FROM dados_sus3 WHERE CIDADE_RESIDENCIA_PACIENTE = 'Nome' AND MORTE = 1
+           - Mortes por estado: SELECT COUNT(*) FROM dados_sus3 WHERE UF_RESIDENCIA_PACIENTE = 'UF' AND MORTE = 1
+        
+        {suggestions_text}
+        
+        SEMPRE valide se está usando as colunas corretas para o que foi perguntado!
+        Dê preferência para nomes de cidades ao invés de códigos IBGE!
+        """
 
     def get_custom_template(self) -> PromptTemplate:
         """Retorna o template personalizado."""

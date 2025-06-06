@@ -287,37 +287,37 @@ class SUSSchemaDocumentation:
         mortality_info = self.get_mortality_info()
 
         prompt = f"""
-DOCUMENTAÇÃO DO SCHEMA - DADOS SUS (SIH/SUS):
-
-CAMPOS IMPORTANTES PARA ANÁLISES:
-
-1. MORTALIDADE:
-   - MORTE: {self.columns_info['MORTE']['valores_validos']}
-   - CID_MORTE: {self.columns_info['CID_MORTE']['descricao']}
-   - REGRA: Para contar mortes, use "MORTE = 1", NÃO "MORTE > 0" ou "CID_MORTE > 0"
-
-2. GEOGRAFIA:
-   - CIDADE_RESIDENCIA_PACIENTE: Nome da cidade (use para filtrar por cidade)
-   - MUNIC_RES: Código IBGE (431490=Porto Alegre, 430300=Santa Maria)
-   - UF_RESIDENCIA_PACIENTE: Sigla do estado
-   - REGRA: Para perguntas sobre cidades, use CIDADE_RESIDENCIA_PACIENTE = 'Nome'
-
-3. SEXO:
-   - {self.columns_info['SEXO']['valores_validos']}
-   - ATENÇÃO: Não é 1=M, 2=F - é 1=M, 3=F
-
-4. UTI:
-   - UTI_MES_TO = 0: Não ficou em UTI
-   - UTI_MES_TO > 0: Número de dias em UTI
-
-QUERIES CORRETAS:
-- Mortes totais: SELECT COUNT(*) FROM dados_sus3 WHERE MORTE = 1
-- Mortes por cidade: SELECT COUNT(*) FROM dados_sus3 WHERE CIDADE_RESIDENCIA_PACIENTE = 'Nome' AND MORTE = 1
-
-EVITAR:
-- SELECT COUNT(*) FROM dados_sus3 WHERE CID_MORTE > 0  (incorreto para mortes!)
-- SELECT COUNT(*) FROM dados_sus3 WHERE MUNIC_RES = codigo AND MORTE > 0  (use nome da cidade e MORTE = 1!)
-        """
+        DOCUMENTAÇÃO DO SCHEMA - DADOS SUS (SIH/SUS):
+        
+        CAMPOS IMPORTANTES PARA ANÁLISES:
+        
+        1. MORTALIDADE:
+           - MORTE: {self.columns_info['MORTE']['valores_validos']}
+           - CID_MORTE: {self.columns_info['CID_MORTE']['descricao']}
+           - REGRA: Para contar mortes, use "MORTE = 1", NÃO "MORTE > 0" ou "CID_MORTE > 0"
+        
+        2. GEOGRAFIA:
+           - CIDADE_RESIDENCIA_PACIENTE: Nome da cidade (use para filtrar por cidade)
+           - MUNIC_RES: Código IBGE (431490=Porto Alegre, 430300=Santa Maria)
+           - UF_RESIDENCIA_PACIENTE: Sigla do estado
+           - REGRA: Para perguntas sobre cidades, use CIDADE_RESIDENCIA_PACIENTE = 'Nome'
+        
+        3. SEXO:
+           - {self.columns_info['SEXO']['valores_validos']}
+           - ATENÇÃO: Não é 1=M, 2=F - é 1=M, 3=F
+        
+        4. UTI:
+           - UTI_MES_TO = 0: Não ficou em UTI
+           - UTI_MES_TO > 0: Número de dias em UTI
+        
+        QUERIES CORRETAS:
+        - Mortes totais: SELECT COUNT(*) FROM dados_sus3 WHERE MORTE = 1
+        - Mortes por cidade: SELECT COUNT(*) FROM dados_sus3 WHERE CIDADE_RESIDENCIA_PACIENTE = 'Nome' AND MORTE = 1
+        
+        EVITAR:
+        - SELECT COUNT(*) FROM dados_sus3 WHERE CID_MORTE > 0  (incorreto para mortes!)
+        - SELECT COUNT(*) FROM dados_sus3 WHERE MUNIC_RES = codigo AND MORTE > 0  (use nome da cidade e MORTE = 1!)
+                """
 
         return prompt
 
@@ -364,18 +364,18 @@ EVITAR:
         intent_lower = intent.lower()
         suggestions = []
 
-        if any(word in intent_lower for word in ["morte", "morreu", "óbito", "death"]):
+        if any(word in intent_lower for word in ["morte", "morreu", "óbito", "falecimento"]):
             suggestions.append("MORTE = 1 (para contar óbitos)")
             suggestions.append("CID_MORTE (para causa da morte, quando MORTE = 1)")
 
-        if any(word in intent_lower for word in ["cidade", "city", "porto alegre", "santa maria"]):
+        if any(word in intent_lower for word in ["cidade", "porto alegre", "santa maria"]):
             suggestions.append("CIDADE_RESIDENCIA_PACIENTE (nome da cidade - PREFERIDO)")
             suggestions.append("MUNIC_RES (código IBGE - menos preciso)")
 
-        if any(word in intent_lower for word in ["idade", "age", "anos"]):
+        if any(word in intent_lower for word in ["idade", "anos"]):
             suggestions.append("IDADE (idade em anos)")
 
-        if any(word in intent_lower for word in ["sexo", "gender", "masculino", "feminino"]):
+        if any(word in intent_lower for word in ["sexo", "masculino", "feminino"]):
             suggestions.append("SEXO (1=Masculino, 3=Feminino)")
 
         if any(word in intent_lower for word in ["estado", "uf", "região"]):
@@ -384,7 +384,7 @@ EVITAR:
         if any(word in intent_lower for word in ["uti", "intensive"]):
             suggestions.append("UTI_MES_TO (dias em UTI, 0=não ficou)")
 
-        if any(word in intent_lower for word in ["custo", "valor", "cost", "money"]):
+        if any(word in intent_lower for word in ["custo", "valor"]):
             suggestions.append("VAL_TOT (valor total em Reais)")
 
         return suggestions
