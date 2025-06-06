@@ -275,8 +275,11 @@ class SQLAgent:
         executed_query = None
 
         try:
-            # Fallback para contagem de colunas
-            if "quantas colunas" in query_lower or "colunas tem" in query_lower:
+            # 🔧 FALLBACK MELHORADO: Contagem de colunas com múltiplas variações
+            if any(phrase in query_lower for phrase in [
+                "quantas colunas", "colunas tem", "número de colunas", "numero de colunas",
+                "how many columns", "columns does", "count columns"
+            ]):
                 executed_query = "SELECT COUNT(*) FROM pragma_table_info('dados_sus3');"
                 result = self.db_manager.execute_query(executed_query)
                 count = self._safe_extract_count(result)
@@ -285,11 +288,15 @@ class SQLAgent:
                     "response": f"A tabela dados_sus3 tem {count} colunas.",
                     "method": "fallback_columns",
                     "executed_queries": [executed_query],
-                    "query_count": 1
+                    "query_count": 1,
+                    "fallback_reason": "Correção automática: pergunta sobre colunas"
                 }
 
-            # Fallback para contagem de registros
-            elif "quantos registros" in query_lower or "quantas linhas" in query_lower:
+            # 🔧 FALLBACK MELHORADO: Contagem de registros
+            elif any(phrase in query_lower for phrase in [
+                "quantos registros", "quantas linhas", "número de registros", "numero de registros",
+                "how many records", "how many rows", "count records", "count rows"
+            ]):
                 executed_query = "SELECT COUNT(*) FROM dados_sus3;"
                 result = self.db_manager.execute_query(executed_query)
                 count = self._safe_extract_count(result)
@@ -298,8 +305,10 @@ class SQLAgent:
                     "response": f"A tabela dados_sus3 tem {count:,} registros.",
                     "method": "fallback_records",
                     "executed_queries": [executed_query],
-                    "query_count": 1
+                    "query_count": 1,
+                    "fallback_reason": "Correção automática: pergunta sobre registros"
                 }
+
 
             # Fallback para estados
             elif "quantos estados" in query_lower or "estados diferentes" in query_lower:
@@ -327,7 +336,6 @@ class SQLAgent:
                     "query_count": 1
                 }
 
-            # ✅ NOVO: Fallback para listar cidades distintas
             elif ("quais cidades" in query_lower or "cidades distintas" in query_lower) and "existem" in query_lower:
                 executed_query = "SELECT DISTINCT CIDADE_RESIDENCIA_PACIENTE FROM dados_sus3 ORDER BY CIDADE_RESIDENCIA_PACIENTE LIMIT 20;"
                 result = self.db_manager.execute_query(executed_query)
@@ -356,7 +364,6 @@ class SQLAgent:
                             "query_count": 1
                         }
 
-            # Fallback para mortes por cidade específica - NOVO E CORRIGIDO
             elif any(city in query_lower for city in ["porto alegre", "santa maria", "caxias do sul", "pelotas", "uruguaiana"]) and any(word in query_lower for word in ["morte", "morreu", "óbito", "death", "deaths"]):
                 # Detectar nome da cidade
                 city_name = None
