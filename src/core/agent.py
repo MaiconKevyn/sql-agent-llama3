@@ -1,4 +1,4 @@
-"""Implementação do agente SQL principal com documentação de schema e correções."""
+"""Implementação completa do agente SQL com todas as correções."""
 
 import re
 from typing import Dict, Any, Optional, List
@@ -47,6 +47,134 @@ class SQLAgent:
             }
         )
 
+    def _should_use_fallback(self, query: str) -> bool:
+        """
+        🔧 SISTEMA DE BYPASS INTELIGENTE
+        Determina se deve usar fallback ao invés do agente LLM.
+
+        Args:
+            query: Pergunta do usuário
+
+        Returns:
+            True se deve usar fallback direto
+        """
+        query_lower = query.lower()
+
+        # Casos onde o agente LLM frequentemente erra
+        fallback_triggers = [
+            # Contagem de colunas - problema identificado
+            ("quantas colunas", "tem"),
+            ("colunas tem", "tabela"),
+            ("número de colunas", ""),
+            ("numero de colunas", ""),
+            ("how many columns", ""),
+            ("columns does", ""),
+
+            # Contagem de registros - às vezes confunde com colunas
+            ("quantos registros", ""),
+            ("quantas linhas", ""),
+            ("número de registros", ""),
+            ("how many records", ""),
+            ("how many rows", ""),
+
+            # Mortalidade - frequentemente usa CID_MORTE incorretamente
+            ("quantas mortes", ""),
+            ("quantos morreram", ""),
+            ("número de mortes", ""),
+            ("total de mortes", ""),
+            ("how many deaths", ""),
+
+            # Geografia simples - às vezes usa códigos IBGE incorretos
+            ("quantos estados", ""),
+            ("quantas cidades", ""),
+            ("estados diferentes", ""),
+            ("cidades diferentes", "")
+        ]
+
+        # Verificar se a query bate com algum padrão de fallback
+        for trigger1, trigger2 in fallback_triggers:
+            if trigger1 in query_lower and (not trigger2 or trigger2 in query_lower):
+                return True
+
+        return False
+
+    def _validate_agent_response(self, query: str, agent_output: str, executed_queries: List[str]) -> Dict[str, Any]:
+        """
+        🔧 VALIDAÇÃO DE RESPOSTA DO AGENTE
+        Valida se a resposta do agente faz sentido baseada na pergunta original.
+
+        Args:
+            query: Pergunta original do usuário
+            agent_output: Resposta do agente
+            executed_queries: Queries SQL executadas
+
+        Returns:
+            Dict com validação e correção se necessário
+        """
+        query_lower = query.lower()
+
+        # VALIDAÇÃO 1: Pergunta sobre colunas mas resposta muito alta
+        if any(word in query_lower for word in ["quantas colunas", "colunas tem", "número de colunas", "how many columns"]):
+            # Extrair número da resposta do agente
+            import re
+            numbers = re.findall(r'\d+', agent_output.replace(',', '').replace('.', ''))
+            if numbers:
+                reported_count = int(numbers[0])
+                # Se resposta é muito alta para ser número de colunas (>50), provavelmente está errado
+                if reported_count > 50:
+                    return {
+                        "is_valid": False,
+                        "issue": f"Agente reportou {reported_count} colunas, mas isso parece ser número de registros",
+                        "correction_needed": "column_count",
+                        "executed_queries": executed_queries
+                    }
+
+        # VALIDAÇÃO 2: Pergunta sobre registros mas resposta muito baixa
+        elif any(word in query_lower for word in ["quantos registros", "quantas linhas", "how many records", "how many rows"]):
+            import re
+            numbers = re.findall(r'\d+', agent_output.replace(',', '').replace('.', ''))
+            if numbers:
+                reported_count = int(numbers[0])
+                # Se resposta é muito baixa para ser número de registros (<100), pode estar errado
+                if reported_count < 100:
+                    return {
+                        "is_valid": False,
+                        "issue": f"Agente reportou {reported_count} registros, mas isso parece muito baixo",
+                        "correction_needed": "record_count",
+                        "executed_queries": executed_queries
+                    }
+
+        # VALIDAÇÃO 3: Verificar queries SQL executadas
+        for sql_query in executed_queries:
+            sql_upper = sql_query.upper()
+
+            # Se pergunta é sobre colunas mas query conta registros
+            if any(word in query_lower for word in ["quantas colunas", "colunas tem", "how many columns"]):
+                if "COUNT(*) FROM dados_sus3" in sql_upper and "pragma_table_info" not in sql_upper:
+                    return {
+                        "is_valid": False,
+                        "issue": "Query conta registros ao invés de colunas",
+                        "wrong_query": sql_query,
+                        "correction_needed": "column_count",
+                        "executed_queries": executed_queries
+                    }
+
+            # Se pergunta é sobre registros mas query conta colunas
+            elif any(word in query_lower for word in ["quantos registros", "quantas linhas", "how many records"]):
+                if "pragma_table_info" in sql_upper:
+                    return {
+                        "is_valid": False,
+                        "issue": "Query conta colunas ao invés de registros",
+                        "wrong_query": sql_query,
+                        "correction_needed": "record_count",
+                        "executed_queries": executed_queries
+                    }
+
+        return {
+            "is_valid": True,
+            "executed_queries": executed_queries
+        }
+
     def _extract_sql_queries(self, intermediate_steps: List) -> List[str]:
         """
         Extrai queries SQL dos passos intermediários do agente.
@@ -86,30 +214,6 @@ class SQLAgent:
                 unique_queries.append(query)
 
         return unique_queries
-
-    def _format_query_for_display(self, query: str) -> str:
-        """
-        Formata query SQL para exibição legível.
-
-        Args:
-            query: Query SQL bruta
-
-        Returns:
-            Query formatada
-        """
-        # Remover quebras de linha extras e espaços
-        clean_query = ' '.join(query.split())
-
-        # Adicionar quebras de linha em pontos estratégicos
-        formatted = clean_query
-        formatted = re.sub(r'\bSELECT\b', '\nSELECT', formatted, flags=re.IGNORECASE)
-        formatted = re.sub(r'\bFROM\b', '\nFROM', formatted, flags=re.IGNORECASE)
-        formatted = re.sub(r'\bWHERE\b', '\nWHERE', formatted, flags=re.IGNORECASE)
-        formatted = re.sub(r'\bGROUP BY\b', '\nGROUP BY', formatted, flags=re.IGNORECASE)
-        formatted = re.sub(r'\bORDER BY\b', '\nORDER BY', formatted, flags=re.IGNORECASE)
-        formatted = re.sub(r'\bLIMIT\b', '\nLIMIT', formatted, flags=re.IGNORECASE)
-
-        return formatted.strip()
 
     def _safe_extract_count(self, result) -> int:
         """
@@ -204,14 +308,29 @@ class SQLAgent:
         Returns:
             Dict com resultado da consulta, metadados e queries executadas
         """
+        # 🔧 CORREÇÃO PRINCIPAL: Usar fallback para perguntas problemáticas
+        if self._should_use_fallback(query):
+            if self.debug_mode:
+                print("🔧 [DEBUG] Usando fallback direto")
+
+            fallback_result = self._try_fallback_query(query)
+            if fallback_result:
+                fallback_result["agent_bypassed"] = True
+                fallback_result["bypass_reason"] = "Pergunta propensa a erro do agente LLM"
+                return fallback_result
+
         # Adicionar contexto em português com documentação do schema
-        contextualized_query = self.prompt_manager.create_contextualized_query_with_schema(query)
+        try:
+            contextualized_query = self.prompt_manager.create_contextualized_query_with_schema(query)
+        except AttributeError:
+            # Fallback se método não existe
+            contextualized_query = self.prompt_manager.create_contextualized_query(query)
 
         try:
             # Tentar com o agente
             result = self.agent_executor.invoke({"input": contextualized_query})
 
-            # ✅ CORREÇÃO PRINCIPAL: Inicializar variáveis ANTES dos blocos condicionais
+            # ✅ Inicializar variáveis ANTES dos blocos condicionais
             executed_queries = []
             validation_results = []
 
@@ -225,6 +344,25 @@ class SQLAgent:
                     validation_results.append(validation)
 
             if 'output' in result and result['output'] != 'Agent stopped due to iteration limit or time limit.':
+
+                # 🔧 NOVA VALIDAÇÃO: Verificar se resposta do agente faz sentido
+                response_validation = self._validate_agent_response(query, result['output'], executed_queries)
+
+                if not response_validation['is_valid']:
+                    # Resposta do agente é suspeita, usar fallback
+                    if self.debug_mode:
+                        print(f"🔧 [DEBUG] Resposta do agente suspeita: {response_validation['issue']}")
+                        print(f"🔧 [DEBUG] Aplicando correção via fallback")
+
+                    fallback_result = self._try_fallback_query(query)
+                    if fallback_result:
+                        fallback_result["agent_error_detected"] = True
+                        fallback_result["agent_error"] = response_validation['issue']
+                        fallback_result["wrong_agent_response"] = result['output']
+                        if 'wrong_query' in response_validation:
+                            fallback_result["wrong_query"] = response_validation['wrong_query']
+                        return fallback_result
+
                 response_data = {
                     "success": True,
                     "response": result['output'],
@@ -234,7 +372,6 @@ class SQLAgent:
                     "intermediate_steps": result.get('intermediate_steps', []) if self.debug_mode else None
                 }
 
-                # ✅ Agora validation_results sempre existe
                 # Adicionar validações se houver issues
                 if validation_results and any(not v['is_valid'] for v in validation_results):
                     response_data["query_validation"] = validation_results
@@ -270,7 +407,7 @@ class SQLAgent:
             }
 
     def _try_fallback_query(self, query: str) -> Optional[Dict[str, Any]]:
-        """Tenta processar consulta com fallbacks específicos."""
+        """Tenta processar consulta com fallbacks específicos e mais robustos."""
         query_lower = query.lower()
         executed_query = None
 
@@ -309,7 +446,6 @@ class SQLAgent:
                     "fallback_reason": "Correção automática: pergunta sobre registros"
                 }
 
-
             # Fallback para estados
             elif "quantos estados" in query_lower or "estados diferentes" in query_lower:
                 executed_query = "SELECT COUNT(DISTINCT UF_RESIDENCIA_PACIENTE) FROM dados_sus3;"
@@ -336,6 +472,7 @@ class SQLAgent:
                     "query_count": 1
                 }
 
+            # ✅ Fallback para listar cidades distintas
             elif ("quais cidades" in query_lower or "cidades distintas" in query_lower) and "existem" in query_lower:
                 executed_query = "SELECT DISTINCT CIDADE_RESIDENCIA_PACIENTE FROM dados_sus3 ORDER BY CIDADE_RESIDENCIA_PACIENTE LIMIT 20;"
                 result = self.db_manager.execute_query(executed_query)
@@ -364,64 +501,20 @@ class SQLAgent:
                             "query_count": 1
                         }
 
-            elif any(city in query_lower for city in ["porto alegre", "santa maria", "caxias do sul", "pelotas", "uruguaiana"]) and any(word in query_lower for word in ["morte", "morreu", "óbito", "death", "deaths"]):
-                # Detectar nome da cidade
-                city_name = None
-                city_mapping = {
-                    "porto alegre": "Porto Alegre",
-                    "santa maria": "Santa Maria",
-                    "caxias do sul": "Caxias do Sul",
-                    "pelotas": "Pelotas",
-                    "uruguaiana": "Uruguaiana"
-                }
-
-                for key, value in city_mapping.items():
-                    if key in query_lower:
-                        city_name = value
-                        break
-
-                if city_name:
-                    executed_query = f"SELECT COUNT(*) FROM dados_sus3 WHERE CIDADE_RESIDENCIA_PACIENTE = '{city_name}' AND MORTE = 1;"
-                    result = self.db_manager.execute_query(executed_query)
-                    count = self._safe_extract_count(result)
-                    return {
-                        "success": True,
-                        "response": f"Houve {count} mortes em {city_name}.",
-                        "method": "fallback_city_deaths",
-                        "executed_queries": [executed_query],
-                        "query_count": 1,
-                        "schema_correction": f"Corrigido: usando CIDADE_RESIDENCIA_PACIENTE = '{city_name}' e MORTE = 1"
-                    }
-
-            # Fallback para mortes por sexo - NOVO
-            elif any(word in query_lower for word in ["masculino", "feminino", "homem", "mulher"]) and any(word in query_lower for word in ["morte", "morreu", "óbito", "death", "deaths"]):
-                if any(word in query_lower for word in ["masculino", "homem"]):
-                    sexo_code = 1
-                    sexo_desc = "masculino"
-                else:
-                    sexo_code = 3
-                    sexo_desc = "feminino"
-
-                executed_query = f"SELECT COUNT(*) FROM dados_sus3 WHERE MORTE = 1 AND SEXO = {sexo_code};"
-                result = self.db_manager.execute_query(executed_query)
-                count = self._safe_extract_count(result)
-                return {
-                    "success": True,
-                    "response": f"Houve {count} mortes para o sexo {sexo_desc}.",
-                    "method": "fallback_deaths_by_gender",
-                    "executed_queries": [executed_query],
-                    "query_count": 1,
-                    "schema_correction": f"Corrigido: usando MORTE = 1 e SEXO = {sexo_code} ({sexo_desc})"
-                }
-
-            # Fallback para mortes gerais - APENAS PARA CASOS MUITO SIMPLES
-            elif query_lower in ["how many deaths?", "how many deaths", "quantas mortes?", "quantas mortes", "total de mortes", "número de mortes"] or (any(word in query_lower for word in ["morte", "morreu", "óbito", "death", "deaths"]) and not any(city in query_lower for city in ["porto alegre", "santa maria", "caxias", "pelotas", "uruguaiana"]) and not any(filter_word in query_lower for filter_word in ["sexo", "masculino", "feminino", "homem", "mulher", "idade", "estado", "cidade", "para", "por", "em", "de", "and", "onde", "com"])):
+            # 🔧 FALLBACK MELHORADO: Mortalidade com múltiplas variações
+            elif any(phrase in query_lower for phrase in [
+                "quantas mortes", "quantos morreram", "número de mortes", "total de mortes",
+                "how many deaths", "death count", "mortality count"
+            ]) and not any(filter_word in query_lower for filter_word in [
+                "porto alegre", "santa maria", "caxias", "pelotas", "uruguaiana",
+                "masculino", "feminino", "homem", "mulher", "sexo", "idade", "estado", "cidade"
+            ]):
                 executed_query = "SELECT COUNT(*) FROM dados_sus3 WHERE MORTE = 1;"
                 result = self.db_manager.execute_query(executed_query)
                 count = self._safe_extract_count(result)
                 return {
                     "success": True,
-                    "response": f"Houve {count} mortes registradas nos dados.",
+                    "response": f"Houve {count:,} mortes registradas nos dados.",
                     "method": "fallback_deaths",
                     "executed_queries": [executed_query],
                     "query_count": 1,

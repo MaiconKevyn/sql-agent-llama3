@@ -1,4 +1,4 @@
-"""Interface de linha de comando com suporte a debug de queries."""
+"""Interface de linha de comando completa com suporte a debug e performance."""
 
 import sys
 import os
@@ -13,7 +13,7 @@ from src.utils.commands import CommandProcessor
 
 
 class CLIInterface:
-    """Interface de linha de comando para o agente SQL com funcionalidades de debug."""
+    """Interface de linha de comando para o agente SQL com funcionalidades completas."""
 
     def __init__(self):
         """Inicializa a interface CLI."""
@@ -137,6 +137,12 @@ class CLIInterface:
             self._run_test_queries()
             return True
 
+        elif main_command == '/validate':
+            return self._handle_validate_command(command_parts)
+
+        elif main_command == '/schema':
+            return self._handle_schema_command(command_parts)
+
         elif main_command == '/limpar':
             self.display.clear_terminal()
             self.display.show_banner()
@@ -245,6 +251,118 @@ class CLIInterface:
 
         return True
 
+    def _handle_validate_command(self, command_parts: list) -> bool:
+        """
+        Valida uma query SQL específica contra o schema.
+
+        Args:
+            command_parts: Partes do comando
+
+        Returns:
+            True para continuar
+        """
+        if len(command_parts) < 2:
+            print("❌ Use: /validate SELECT COUNT(*) FROM dados_sus3 WHERE MORTE = 1")
+            print("💡 Exemplo: /validate SELECT COUNT(*) FROM dados_sus3 WHERE CID_MORTE > 0")
+            return True
+
+        # Juntar todas as partes exceto a primeira para formar a query
+        sql_query = " ".join(command_parts[1:])
+
+        if not self.agent:
+            print("❌ Agente não inicializado")
+            return True
+
+        print(f"🔍 Validando query: {sql_query}")
+
+        try:
+            validation_result = self.agent.validate_query_against_schema(sql_query)
+
+            print(f"\n📋 RESULTADO DA VALIDAÇÃO:")
+            print("=" * 40)
+
+            if validation_result['is_valid']:
+                print("✅ Query válida - nenhum problema detectado")
+            else:
+                print("⚠️  Problemas detectados:")
+                for issue in validation_result['issues']:
+                    print(f"   ❌ {issue}")
+
+                if validation_result['suggestions']:
+                    print("\n💡 Sugestões:")
+                    for suggestion in validation_result['suggestions']:
+                        print(f"   • {suggestion}")
+
+            print("=" * 40)
+
+        except Exception as e:
+            print(f"❌ Erro ao validar query: {e}")
+
+        return True
+
+    def _handle_schema_command(self, command_parts: list) -> bool:
+        """
+        Mostra informações do schema para uma coluna específica.
+
+        Args:
+            command_parts: Partes do comando
+
+        Returns:
+            True para continuar
+        """
+        if len(command_parts) < 2:
+            print("❌ Use: /schema NOME_COLUNA")
+            print("💡 Exemplo: /schema MORTE")
+            print("💡 Exemplo: /schema CIDADE_RESIDENCIA_PACIENTE")
+            return True
+
+        column_name = command_parts[1].upper()
+
+        if not self.agent:
+            print("❌ Agente não inicializado")
+            return True
+
+        try:
+            from src.utils.schema_documentation import schema_docs
+            column_info = schema_docs.get_column_info(column_name)
+
+            print(f"\n📋 INFORMAÇÕES DA COLUNA: {column_name}")
+            print("=" * 50)
+
+            if 'descricao' in column_info and column_info['descricao'] != "Coluna não documentada":
+                print(f"📖 Nome: {column_info.get('nome', column_name)}")
+                print(f"📊 Tipo: {column_info.get('tipo', 'N/A')}")
+                print(f"📝 Descrição: {column_info.get('descricao', 'N/A')}")
+
+                if 'valores_validos' in column_info:
+                    print(f"✅ Valores válidos:")
+                    for key, value in column_info['valores_validos'].items():
+                        print(f"   {key}: {value}")
+
+                if 'exemplos' in column_info:
+                    exemplos = ", ".join(map(str, column_info['exemplos'][:5]))
+                    print(f"💡 Exemplos: {exemplos}")
+
+                if 'uso_comum' in column_info:
+                    print(f"🎯 Uso comum: {column_info['uso_comum']}")
+
+                if 'nota' in column_info:
+                    print(f"⚠️  Nota: {column_info['nota']}")
+
+                if 'query_exemplo' in column_info:
+                    print(f"📋 Query exemplo: {column_info['query_exemplo']}")
+
+            else:
+                print(f"❌ Coluna '{column_name}' não encontrada na documentação")
+                print("💡 Colunas disponíveis: MORTE, SEXO, CIDADE_RESIDENCIA_PACIENTE, UF_RESIDENCIA_PACIENTE, IDADE, etc.")
+
+            print("=" * 50)
+
+        except Exception as e:
+            print(f"❌ Erro ao buscar informações da coluna: {e}")
+
+        return True
+
     def _show_status(self) -> None:
         """Mostra status atual do sistema."""
         print("\n📊 STATUS DO SISTEMA:")
@@ -262,7 +380,11 @@ class CLIInterface:
                 # Mostrar informação da primeira tabela se existir
                 if db_info.get('tables'):
                     first_table = db_info['tables'][0]
-                    print(f"📊 Registros na tabela principal: {first_table.get('record_count', 'N/A')}")
+                    record_count = first_table.get('record_count', 'N/A')
+                    if isinstance(record_count, int):
+                        print(f"📊 Registros na tabela principal: {record_count:,}")
+                    else:
+                        print(f"📊 Registros na tabela principal: {record_count}")
 
             except Exception as e:
                 print(f"⚠️  Erro ao obter info do banco: {e}")
@@ -281,7 +403,9 @@ class CLIInterface:
         test_queries = [
             "Quantas colunas tem a tabela?",
             "Quantos registros existem?",
-            "Quantos estados diferentes temos?"
+            "Quantos estados diferentes temos?",
+            "Quantas cidades diferentes existem?",
+            "Quantas mortes houve?"
         ]
 
         for i, query in enumerate(test_queries, 1):
@@ -293,6 +417,13 @@ class CLIInterface:
                     if self.debug_mode and 'executed_queries' in result:
                         for sql in result['executed_queries']:
                             print(f"   SQL: {sql}")
+
+                    # Mostrar se houve correção automática
+                    if 'agent_bypassed' in result:
+                        print(f"🔧 Bypass aplicado: {result['bypass_reason']}")
+                    elif 'agent_error_detected' in result:
+                        print(f"🔧 Erro corrigido: {result['agent_error']}")
+
                 else:
                     print(f"❌ {result['response']}")
             except Exception as e:
@@ -322,7 +453,7 @@ class CLIInterface:
 
             processing_time = time.time() - start_time
 
-            # Mostrar resultado com ou sem queries dependendo do modo debug
+            # 🔧 CORREÇÃO PRINCIPAL: Passar corretamente o debug mode
             self.display.show_query_result(result, show_queries=self.debug_mode)
 
             # Mostrar informações de performance se ativo
@@ -355,6 +486,7 @@ class CLIInterface:
                 "query_count": 0,
                 "error_details": str(e)
             }
+            # 🔧 Passar debug mode também para erros
             self.display.show_query_result(error_result, show_queries=self.debug_mode)
 
     def get_debug_mode(self) -> bool:
@@ -380,3 +512,25 @@ class CLIInterface:
 
         if performance is not None:
             self.show_performance = performance
+
+    def toggle_debug(self) -> bool:
+        """
+        Alterna modo debug.
+
+        Returns:
+            Novo status do debug mode
+        """
+        self.debug_mode = not self.debug_mode
+        if self.agent:
+            self.agent.set_debug_mode(self.debug_mode)
+        return self.debug_mode
+
+    def toggle_performance(self) -> bool:
+        """
+        Alterna modo performance.
+
+        Returns:
+            Novo status do performance mode
+        """
+        self.show_performance = not self.show_performance
+        return self.show_performance

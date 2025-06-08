@@ -19,10 +19,9 @@ def mostrar_banner():
     """Mostra o banner inicial do programa"""
     banner = """
 ╔══════════════════════════════════════════════════════════════╗
-║                    🤖 AGENTE SQL INTERATIVO                  ║
-║                    🇧🇷 Respostas em Português               ║
+║                    🤖 AGENTE SQL PYSUS                  ║
 ║                                                              ║
-║  Faça perguntas sobre o banco de dados em linguagem natural ║
+║  Faça perguntas sobre o banco de dados                       ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
     """

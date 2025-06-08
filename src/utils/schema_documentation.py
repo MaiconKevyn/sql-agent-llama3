@@ -210,7 +210,7 @@ class SUSSchemaDocumentation:
 
         return {
             "mortalidade": [
-                "Para contar mortes: usar MORTE = 1 (NÃO MORTE > 0 ou CID_MORTE > 0)",
+                "Para contar mortes: usar  MORTE = 1 (NÃO MORTE > 0 ou CID_MORTE > 0)",
                 "Para analisar causas de morte: usar CID_MORTE > 0 E MORTE = 1",
                 "CID_MORTE = 0 significa que não houve morte OU causa não foi informada",
                 "Nem todos os casos com MORTE = 1 têm CID_MORTE preenchido",
@@ -335,7 +335,8 @@ class SUSSchemaDocumentation:
 
         # Verificar uso de código IBGE para cidades quando deveria usar nome
         if "MUNIC_RES =" in query_upper and any(city in query_upper for city in ["PORTO", "SANTA", "CAXIAS"]):
-            issues.append("Usando código IBGE para filtrar cidade (pode ser impreciso)")
+            issues.append("Usando código IBGE pa"
+                          "ra filtrar cidade (pode ser impreciso)")
             suggestions.append("Use 'CIDADE_RESIDENCIA_PACIENTE = nome_cidade' para maior precisão")
 
         # Verificar problemas com sexo

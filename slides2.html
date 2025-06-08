@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arquitetura do Agente SQL</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --slide-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --header-color: #333;
+            --accent-color: #00aaff;
+            --accent-light: #61dafb;
+            --code-bg: #282c34;
+            --border-color: var(--accent-color);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .presentation {
+            width: 100%;
+            height: 100vh;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+
+        .slide {
+            width: 95%;
+            max-width: 1200px;
+            height: 100vh;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            margin: 0 auto;
+            box-sizing: border-box;
+            border-bottom: 3px solid var(--header-color);
+        }
+
+        .slide-title {
+            text-align: center;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--slide-bg), #2a2a3a);
+        }
+
+        .slide-title h1 {
+            font-size: 3.5em;
+            color: var(--accent-light);
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(97, 218, 251, 0.3);
+        }
+
+        .slide-title h2 {
+            font-size: 1.6em;
+            font-weight: 300;
+            color: var(--text-color);
+        }
+
+        h2 {
+            font-size: 2.5em;
+            color: var(--accent-light);
+            border-bottom: 2px solid var(--accent-light);
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+            align-self: flex-start;
+            width: 100%;
+        }
+
+        p, .explanation {
+            font-size: 1.2em;
+            line-height: 1.7;
+            align-self: flex-start;
+            width: 100%;
+            max-width: 80ch; /* Limita a largura do texto para melhor leitura */
+        }
+
+        .mermaid-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+        }
+
+        .mermaid {
+            width: 100%;
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        strong {
+            color: var(--accent-light);
+            font-weight: 600;
+        }
+
+        .columns {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            align-items: stretch;
+        }
+
+        .column {
+            flex: 1;
+            background-color: var(--slide-bg);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--header-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation">
+
+        <section class="slide slide-title">
+            <h1>Análise Arquitetural do Agente SQL</h1>
+            <h2>Um Deep Dive Técnico para Cientistas de Dados</h2>
+        </section>
+
+        <section class="slide">
+            <h2>Visão Geral da Arquitetura (30.000 pés)</h2>
+            <div class="explanation">
+                <p>A arquitetura é dividida em três camadas lógicas desacopladas, um padrão que promove modularidade e testabilidade.</p>
+            </div>
+            <div class="mermaid-container">
+                <div class="mermaid">
+                    graph TD
+                        subgraph " "
+                            direction LR
+                            A[Camada de Apresentação<br><i>CLIInterface</i>]
+                            B[Camada de Lógica (Core)<br><i>SQLAgent, LangChain</i>]
+                            C[Camada de Dados<br><i>DatabaseManager</i>]
+                        end
+
+                        A -- Solicitação --> B
+                        B -- Query --> C
+                        C -- Dados --> B
+                        B -- Resposta --> A
+
+                        style A fill:#00aaff,stroke:#333,stroke-width:2px,color:#fff
+                        style B fill:#e67e22,stroke:#333,stroke-width:2px,color:#fff
+                        style C fill:#27ae60,stroke:#333,stroke-width:2px,color:#fff
+                </div>
+            </div>
+        </section>
+
+        <section class="slide">
+            <h2>Fluxo 1: Da Pergunta à Lógica Central</h2>
+            <div class="explanation">
+                <p>O fluxo inicia na interface, que atua como controladora, sanitizando e roteando a entrada do usuário para o orquestrador central: o <strong><code>SQLAgent</code></strong>.</p>
+            </div>
+            <div class="mermaid-container">
+                <div class="mermaid">
+                    graph LR
+                        User["👤 Usuário"] -->|Pergunta em PT-BR| CLI(CLIInterface)
+
+                        subgraph "Camada de Lógica"
+                            Agent(SQLAgent)
+                        end
+
+                        CLI -->|Chama<br><code>run_query(pergunta)</code>| Agent
+
+                        style User fill:#00aaff,stroke:#fff,stroke-width:2px,color:#fff
+                        style CLI fill:#9b59b6,stroke:#fff,stroke-width:2px,color:#fff
+                        style Agent fill:#e67e22,stroke:#fff,stroke-width:2px,color:#fff
+                </div>
+            </div>
+        </section>
+
+        <section class="slide">
+            <h2>Fluxo 2: O Coração do Agente - Ciclo ReAct</h2>
+            <div class="explanation">
+                <p>Dentro do <code>SQLAgent</code>, o <strong><code>AgentExecutor</code></strong> da LangChain inicia um ciclo iterativo de <strong>Raciocínio e Ação (ReAct)</strong> para resolver a solicitação.</p>
+            </div>
+            <div class="mermaid-container">
+                 <div class="mermaid">
+                    graph TD
+                        subgraph "Ciclo ReAct (LangChain)"
+                            Executor(AgentExecutor)
+                            LLM["🧠 LLM (Ollama)"]
+                            Tools["🛠️ Ferramentas<br>(DatabaseManager)"]
+                        end
+
+                        Executor --"Pergunta + Contexto"--> LLM
+                        LLM --"1. Thought (Plano)<br>2. Action (Gerar SQL)"--> Executor
+                        Executor --"3. Executa Ação"--> Tools
+                        Tools --"4. Observation (Dados)"--> Executor
+                        Executor --"5. Envia Observação"--> LLM
+                        LLM --"6. Final Answer"--> Executor
+
+                        style Executor fill:#e67e22,stroke:#fff,stroke-width:2px,color:#fff
+                        style LLM fill:#3498db,stroke:#fff,stroke-width:2px,color:#fff
+                        style Tools fill:#2ecc71,stroke:#fff,stroke-width:2px,color:#fff
+                </div>
+            </div>
+        </section>
+
+        <section class="slide">
+            <h2>Contexto Aumentado: A Fonte da Inteligência</h2>
+            <div class="explanation">
+                <p>O sucesso do ciclo ReAct depende criticamente do contexto injetado. É aqui que reside a maior parte da engenharia de prompt do projeto.</p>
+            </div>
+            <div class="mermaid-container">
+                <div class="mermaid">
+                    graph LR
+                        subgraph "Provedores de Contexto"
+                            Schema[("📄<br>SchemaDocumentation")]
+                            Prompt[("📝<br>PromptManager")]
+                        end
+
+                        subgraph "Consumidor"
+                            AgentExecutor("AgentExecutor<br>+<br>LLM")
+                        end
+
+                        Schema --"Documentação de Colunas<br>+ Regras de Negócio"--> AgentExecutor
+                        Prompt --"Template de Sistema<br>+ Prompts de Correção"--> AgentExecutor
+
+                        style Schema fill:#f1c40f,stroke:#333,stroke-width:2px
+                        style Prompt fill:#f1c40f,stroke:#333,stroke-width:2px
+                        style AgentExecutor fill:#e67e22,stroke:#fff,stroke-width:2px,color:#fff
+
+                </div>
+            </div>
+        </section>
+
+        <section class="slide">
+            <h2>Fluxo 3: Da Resposta Final à Apresentação</h2>
+            <div class="explanation">
+                <p>Após o LLM formular a resposta final, o resultado estruturado retorna pela pilha de chamadas até a camada de apresentação, que o formata para o usuário.</p>
+            </div>
+            <div class="mermaid-container">
+                <div class="mermaid">
+                     graph LR
+                        subgraph "Camada de Lógica"
+                             Agent(SQLAgent)
+                        end
+                        Executor("AgentExecutor") -->|Resposta Estruturada| Agent
+
+                        CLI(CLIInterface) -->|Exibe Resposta<br>Formatada| User["👤 Usuário"]
+                        Agent -->|Retorna Resultado| CLI
+
+                        style User fill:#00aaff,stroke:#fff,stroke-width:2px,color:#fff
+                        style CLI fill:#9b59b6,stroke:#fff,stroke-width:2px,color:#fff
+                        style Agent fill:#e67e22,stroke:#fff,stroke-width:2px,color:#fff
+                        style Executor fill:#e67e22,stroke:#fff,stroke-width:2px,color:#fff
+                </div>
+            </div>
+        </section>
+
+        <section class="slide">
+            <h2>Conclusões Arquiteturais</h2>
+            <div class="explanation">
+                <ul>
+                    <li><strong>Arquitetura Desacoplada:</strong> As camadas claras permitem que o sistema seja robusto, testável e fácil de manter.</li>
+                    <li><strong>Inteligência no Contexto:</strong> A performance não vem do fine-tuning, mas de uma rica e bem estruturada engenharia de contexto e de prompts.</li>
+                    <li><strong>Defesa em Profundidade:</strong> A combinação de validação proativa (prompts de correção) e reativa (validação semântica) garante a confiabilidade dos resultados, um ponto não negociável em aplicações de ciência de dados.</li>
+                </ul>
+            </div>
+        </section>
+
+    </div>
+
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                background: '#ffffff',
+                primaryColor: '#1e1e1e',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#333',
+                lineColor: '#555',
+                textColor: '#333',
+                fontSize: '16px',
+                fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif'
+            }
+        });
+    </script>
+</body>
+</html>
