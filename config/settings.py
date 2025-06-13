@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 from typing import Optional
 from dotenv import load_dotenv
 
-# Carrega variáveis do .env
 load_dotenv()
 
 
