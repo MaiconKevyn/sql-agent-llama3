@@ -59,7 +59,7 @@ class DatabaseManager:
         except Exception as e:
             return {
                 "name": table_name,
-                "record_count": "N/A",
+                "record_count ": "N/A",
                 "columns_count": "N/A",
                 "error": str(e)
             }
