@@ -122,7 +122,7 @@ class SUSSchemaDocumentation:
                 "nota": "NÃO usar para contar mortes! Usar apenas para analisar causas quando MORTE = 1"
             },
 
-            # Procedimentos e Custos
+
             "PROC_REA": {
                 "nome": "Procedimento Realizado",
                 "tipo": "BIGINT",
@@ -229,8 +229,8 @@ class SUSSchemaDocumentation:
             ],
 
             "sexo": [
-                "SEXO = 1 significa Masculino",
-                "SEXO = 3 significa Feminino",
+                "SEXO = 1 significa Masculino ou Homens",
+                "SEXO = 3 significa Feminino ou Mulheres",
                 "Não usar SEXO = 2 (não existe no padrão DATASUS)",
                 "Cuidado: não é 1=M, 2=F como em outros sistemas"
             ],
