@@ -7,10 +7,9 @@ from typing import List, TypedDict, Optional, Any, Literal
 from langgraph.graph import StateGraph, END
 from langgraph.pregel import Pregel
 
-# Importações necessárias para a lógica dos nós
 from src.core.database import DatabaseManager
 from src.prompts.templates import PromptManager
-from src.utils.cid_lookup import CIDLookup # Importa a nova ferramenta de busca
+from src.utils.cid_lookup_semantic import CIDLookup
 import re
 
 class AgentState(TypedDict):
